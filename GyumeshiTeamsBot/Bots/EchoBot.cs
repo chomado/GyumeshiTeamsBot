@@ -8,6 +8,8 @@ using Microsoft.Azure.CognitiveServices.Vision.CustomVision.Prediction;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,12 +24,14 @@ namespace GyumeshiTeamsBot.Bots
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICustomVisionPredictionClient _customVisionPredictionClient;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<EchoBot> _logger;
 
-        public EchoBot(IHttpClientFactory httpClientFactory, ICustomVisionPredictionClient customVisionPredictionClient, IConfiguration configuration)
+        public EchoBot(IHttpClientFactory httpClientFactory, ICustomVisionPredictionClient customVisionPredictionClient, IConfiguration configuration, ILogger<EchoBot> logger)
         {
             _httpClientFactory = httpClientFactory;
             _customVisionPredictionClient = customVisionPredictionClient;
             _configuration = configuration;
+            _logger = logger;
         }
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
@@ -36,6 +40,9 @@ namespace GyumeshiTeamsBot.Bots
             if (turnContext.Activity.Attachments?.Any() ?? false)
             {
                 var attachment = turnContext.Activity.Attachments.First();
+
+                _logger.LogInformation("★★★" + JsonConvert.SerializeObject(attachment));
+
                 using var image = await _httpClientFactory.CreateClient().GetStreamAsync(attachment.ContentUrl);
                 
                 var customVision = _configuration.GetSection("CustomVisionConfiguration");
@@ -43,7 +50,7 @@ namespace GyumeshiTeamsBot.Bots
                 var publishedName = customVision.GetValue<string>("PublishedName");
                 var classifiedResult = await _customVisionPredictionClient.ClassifyImageAsync(new Guid(projectId), publishedName, image);
                 var prediction = classifiedResult.Predictions.FirstOrDefault();
-                if (prediction != null)
+                if (prediction != null && prediction.Probability > 0.75)
                 {
                     replyText = $"これは: {prediction.TagName}";
                 }
