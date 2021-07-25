@@ -58,7 +58,7 @@ namespace GyumeshiTeamsBot.Bots
                 var prediction = classifiedResult.Predictions.FirstOrDefault();
                 if (prediction != null && prediction.Probability > 0.75)
                 {
-                    replyText = $"これは: {prediction.TagName}";
+                    replyText = $"これは {prediction.TagName} だと思います。（自信：{prediction.Probability:##0.##%}）";
                 }
                 else
                 {
