@@ -5,6 +5,7 @@
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Azure.CognitiveServices.Vision.CustomVision.Prediction;
+using Microsoft.Azure.CognitiveServices.Vision.CustomVision.Prediction.Models;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
 using Microsoft.Extensions.Configuration;
@@ -33,22 +34,27 @@ namespace GyumeshiTeamsBot.Bots
             _configuration = configuration;
             _logger = logger;
         }
+
+        public override Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation($"OnTurnAsync: {turnContext.Activity.Type}");
+            return base.OnTurnAsync(turnContext, cancellationToken);
+        }
+
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
             string replyText = default;
 
-            if (turnContext.Activity.Attachments?.Any() ?? false)
+            if (Uri.TryCreate(turnContext.Activity.Text, UriKind.Absolute, out var imageUrl))
             {
-                _logger.LogInformation("★★★" + JsonConvert.SerializeObject(turnContext.Activity.Attachments));
-                
-                var attachment = turnContext.Activity.Attachments.First();
-
-                using var image = await _httpClientFactory.CreateClient().GetStreamAsync(attachment.ContentUrl);
-                
                 var customVision = _configuration.GetSection("CustomVisionConfiguration");
                 var projectId = customVision.GetValue<string>("ProjectId");
                 var publishedName = customVision.GetValue<string>("PublishedName");
-                var classifiedResult = await _customVisionPredictionClient.ClassifyImageAsync(new Guid(projectId), publishedName, image);
+                var classifiedResult = await _customVisionPredictionClient.ClassifyImageUrlAsync(
+                    new Guid(projectId),
+                    publishedName,
+                    new ImageUrl(imageUrl.ToString())
+                    );
                 var prediction = classifiedResult.Predictions.FirstOrDefault();
                 if (prediction != null && prediction.Probability > 0.75)
                 {
@@ -61,7 +67,7 @@ namespace GyumeshiTeamsBot.Bots
             }
             else
             {
-                replyText = "画像を送ってください";
+                replyText = "画像 URL を送ってください";
             }
 
             await turnContext.SendActivityAsync(MessageFactory.Text(replyText, replyText), cancellationToken);
@@ -69,7 +75,7 @@ namespace GyumeshiTeamsBot.Bots
 
         protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
         {
-            var welcomeText = "Hello and welcome!";
+            var welcomeText = "こんにちは。画像の URL を送ってください";
             foreach (var member in membersAdded)
             {
                 if (member.Id != turnContext.Activity.Recipient.Id)
