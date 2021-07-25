@@ -39,9 +39,9 @@ namespace GyumeshiTeamsBot.Bots
 
             if (turnContext.Activity.Attachments?.Any() ?? false)
             {
+                _logger.LogInformation("★★★" + JsonConvert.SerializeObject(turnContext.Activity.Attachments));
+                
                 var attachment = turnContext.Activity.Attachments.First();
-
-                _logger.LogInformation("★★★" + JsonConvert.SerializeObject(attachment));
 
                 using var image = await _httpClientFactory.CreateClient().GetStreamAsync(attachment.ContentUrl);
                 
