@@ -41,6 +41,7 @@ namespace GyumeshiTeamsBot.Bots
             return base.OnTurnAsync(turnContext, cancellationToken);
         }
 
+        // ユーザがなにかメッセージを送ってくれた時に必ず呼ばれるメソッド
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
             string replyText = default;
